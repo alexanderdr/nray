@@ -1,0 +1,2 @@
+Ray Tracer
+Copyright 2014 Derek Alexander

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="module_raytracer" default="compile.module.raytracer">
+  <dirname property="module.raytracer.basedir" file="${ant.file.module_raytracer}"/>
+  
+  <property name="module.jdk.home.raytracer" value="${project.jdk.home}"/>
+  <property name="module.jdk.bin.raytracer" value="${project.jdk.bin}"/>
+  <property name="module.jdk.classpath.raytracer" value="${project.jdk.classpath}"/>
+  
+  <property name="compiler.args.raytracer" value="${compiler.args}"/>
+  
+  <property name="raytracer.output.dir" value="${module.raytracer.basedir}/out/production/RayTracer"/>
+  <property name="raytracer.testoutput.dir" value="${module.raytracer.basedir}/out/test/RayTracer"/>
+  
+  <path id="raytracer.module.bootclasspath">
+    <!-- Paths to be included in compilation bootclasspath -->
+  </path>
+  
+  <path id="raytracer.module.production.classpath">
+    <path refid="${module.jdk.classpath.raytracer}"/>
+  </path>
+  
+  <path id="raytracer.runtime.production.module.classpath">
+    <pathelement location="${raytracer.output.dir}"/>
+  </path>
+  
+  <path id="raytracer.module.classpath">
+    <path refid="${module.jdk.classpath.raytracer}"/>
+    <pathelement location="${raytracer.output.dir}"/>
+  </path>
+  
+  <path id="raytracer.runtime.module.classpath">
+    <pathelement location="${raytracer.testoutput.dir}"/>
+    <pathelement location="${raytracer.output.dir}"/>
+  </path>
+  
+  
+  <patternset id="excluded.from.module.raytracer">
+    <patternset refid="ignored.files"/>
+  </patternset>
+  
+  <patternset id="excluded.from.compilation.raytracer">
+    <patternset refid="excluded.from.module.raytracer"/>
+  </patternset>
+  
+  <path id="raytracer.module.sourcepath">
+    <dirset dir="${module.raytracer.basedir}">
+      <include name="src"/>
+    </dirset>
+  </path>
+  
+  
+  <target name="compile.module.raytracer" depends="compile.module.raytracer.production,compile.module.raytracer.tests" description="Compile module RayTracer"/>
+  
+  <target name="compile.module.raytracer.production" depends="register.custom.compilers" description="Compile module RayTracer; production classes">
+    <mkdir dir="${raytracer.output.dir}"/>
+    <javac2 destdir="${raytracer.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.raytracer}/javac">
+      <compilerarg line="${compiler.args.raytracer}"/>
+      <bootclasspath refid="raytracer.module.bootclasspath"/>
+      <classpath refid="raytracer.module.production.classpath"/>
+      <src refid="raytracer.module.sourcepath"/>
+      <patternset refid="excluded.from.compilation.raytracer"/>
+    </javac2>
+    
+    <copy todir="${raytracer.output.dir}">
+      <fileset dir="${module.raytracer.basedir}/src">
+        <patternset refid="compiler.resources"/>
+        <type type="file"/>
+      </fileset>
+    </copy>
+  </target>
+  
+  <target name="compile.module.raytracer.tests" depends="register.custom.compilers,compile.module.raytracer.production" description="compile module RayTracer; test classes" unless="skip.tests"/>
+  
+  <target name="clean.module.raytracer" description="cleanup module">
+    <delete dir="${raytracer.output.dir}"/>
+    <delete dir="${raytracer.testoutput.dir}"/>
+  </target>
+</project>

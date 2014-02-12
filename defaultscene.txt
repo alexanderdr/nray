@@ -1,0 +1,7 @@
+; ; at the start of a line is a comment
+; this just loads a the bunny by default with the code to load the dragon
+load bunny.obj
+
+; offsets are possible, here is an example
+;load bunny.obj 10 0 0
+;load dragon.obj

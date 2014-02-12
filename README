@@ -1,0 +1,9 @@
+This is a basic mesh raytracer implemented in Java originally with the intent of prototyping algorithms for a more serious raytracer.
+The scene is defined by "defaultscene.txt" which consists of a list of .obj files to load (look at the default file)
+There are a number of different hotkeys that will alter the display to show diagnostic information, most of them can be viewed through the window that '?' brings up.
+Some interesting options: 'o' displays time-per-ray, 'M' toggles multi-threaded rendering, 'n' displays normals, 'B' displays BVH boxes, 'r' enables basic reflections.
+
+Known issues:
+The use of threads is crude and could be improved.
+Photon-mapped lightning has some issues when using kd-trees (press 'P' to toggle, note that not using kd-trees is likely to be glacially slow)
+There appear to be some flaws with the generated BVHs on the interior of objects
