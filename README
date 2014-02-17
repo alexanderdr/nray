@@ -4,6 +4,5 @@ There are a number of different hotkeys that will alter the display to show diag
 Some interesting options: 'o' displays time-per-ray, 'M' toggles multi-threaded rendering, 'n' displays normals, 'B' displays BVH boxes, 'r' enables basic reflections.
 
 Known issues:
-The use of threads is crude and could be improved.
-Photon-mapped lightning has some issues when using kd-trees (press 'P' to toggle, note that not using kd-trees is likely to be glacially slow)
+The photon-mapped lighting gathers photons in a spherical radius when it should use either a flattened spheroid or a similar cylinder.
 There appear to be some flaws with the generated BVHs on the interior of objects
