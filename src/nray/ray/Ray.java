@@ -33,6 +33,7 @@ public class Ray{
     Vec color = new Vec(); //Color of this ray (defaults to black)
     Vec boxColor = new Vec(); //Color of this ray (defaults to black)
     Vec intersection = null; //location of intersection
+    Vec rayInv = new Vec();
     float t = Float.MAX_VALUE; //distance from triangle scaled by ray
     float boxT = Float.MAX_VALUE;
     Triangle Itri; //triangle of intersection
@@ -54,11 +55,13 @@ public class Ray{
     Ray(Vec r,Vec or){
         ray = r;
         origin = or;
+        rayInv.set(1/r.x, 1/r.y, 1/r.z);
     }
     
     public void init(Vec r,Vec or){
         ray = r;
         origin = or;
+        rayInv.set(1/r.x, 1/r.y, 1/r.z);
         color.set(0f,0f,0f);
         boxColor.set(0f,0f,0f);
         intersection = null;

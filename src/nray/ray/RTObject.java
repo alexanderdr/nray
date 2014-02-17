@@ -56,7 +56,7 @@ public class RTObject {
     }
     
     public RTObject(Mesh m){
-        m.sanityCheck();
+        //m.sanityCheck(); slow
         tris.addAll(m.getTriangles());
         System.out.println("Object with: "+tris.size()+" triangles");
         

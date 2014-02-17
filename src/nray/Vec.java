@@ -74,6 +74,7 @@ public final class Vec{
         this.x = x;
         this.y = y;
         this.z = z;
+        //return this;
     }
 
     public final void reset(){
@@ -86,16 +87,16 @@ public final class Vec{
     
     public final Vec add(Vec other){
         Vec temp = new Vec();
-        temp.x = x+other.x;
-        temp.y = y+other.y;
-        temp.z = z+other.z;
+        temp.x = x + other.x;
+        temp.y = y + other.y;
+        temp.z = z + other.z;
         return temp;
     }
     
     public final Vec add(Vec other,Vec temp){
-        temp.x = x+other.x;
-        temp.y = y+other.y;
-        temp.z = z+other.z;
+        temp.x = x + other.x;
+        temp.y = y + other.y;
+        temp.z = z + other.z;
         return temp;
     }
 
@@ -105,23 +106,23 @@ public final class Vec{
     }
     
     public final Vec addInPlace(Vec other){
-        x = x+other.x;
-        y = y+other.y;
-        z = z+other.z;
+        x = x + other.x;
+        y = y + other.y;
+        z = z + other.z;
         return this;
     }
     
     public final Vec addInPlace(float ox,float oy,float oz){
-        x = x+ox;
-        y = y+oy;
-        z = z+oz;
+        x = x + ox;
+        y = y + oy;
+        z = z + oz;
         return this;
     }
     
     public final Vec subInPlace(Vec other){
-        x = x-other.x;
-        y = y-other.y;
-        z = z-other.z;
+        x = x - other.x;
+        y = y - other.y;
+        z = z - other.z;
         return this;
     }
     
@@ -130,9 +131,9 @@ public final class Vec{
     }
     
     public final Vec sub(Vec other,Vec temp){
-        temp.x = x-other.x;
-        temp.y = y-other.y;
-        temp.z = z-other.z;
+        temp.x = x - other.x;
+        temp.y = y - other.y;
+        temp.z = z - other.z;
         return temp;
     }
     
@@ -154,11 +155,11 @@ public final class Vec{
     
     //fast magnitude
     public final float mag(){
-        return x*x+y*y+z*z;
+        return x*x + y*y + z*z;
     }
     
     public final float realMagnitude(){
-        return (float)Math.sqrt(x*x+y*y+z*z);
+        return (float)Math.sqrt(x*x + y*y + z*z);
     }
     
     public final void divideBy(float w){
@@ -195,6 +196,11 @@ public final class Vec{
     
     public final Vec scaleNew(float f){
         return new Vec(x*f,y*f,z*f);
+    }
+
+    public final Vec scaleInto(float f, Vec other){
+        other.set(x*f, y*f, z*f);
+        return other;
     }
     
     public final Vec normalize(){
@@ -256,5 +262,16 @@ public final class Vec{
     
     public String toString(){
         return "x: "+x+" y: "+y+" z: "+z;
+    }
+
+    public Vec mul(Vec other){
+        return new Vec(x * other.x, y * other.y, z * other.z);
+    }
+
+    public Vec mulInPlace(Vec other){
+        x *= other.x;
+        y *= other.y;
+        z *= other.z;
+        return this;
     }
 }

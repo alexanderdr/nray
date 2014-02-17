@@ -28,7 +28,6 @@ package nray;
  * @author dalexander
  */
 public class Options {
-    public static boolean subbox = true;
     public static boolean UV = false;
     public static boolean normal = false;
     public static boolean bvhcolor = false;
@@ -45,6 +44,7 @@ public class Options {
     public static boolean photonLighting = false;
     public static boolean rotateLight = false;
     public static boolean lightFollowsCamera = false;
+    public static boolean fastAndWrong = false;
     /** Creates a new instance of Options */
     public Options() {
     }

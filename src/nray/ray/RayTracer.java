@@ -42,7 +42,8 @@ public class RayTracer {
     Camera camera;
 
     RayLight rlight;
-    
+
+
     static int castAgainstR = 0;
     static int castAgainstB = 0;
     public RayTracer(RayScene s,Camera c,int width,int height){
@@ -138,10 +139,12 @@ public class RayTracer {
                 long dTime = 0;
                 if(boxIndex>1&&Options.reverseCast){
                     //rCast++;
-                    if(lastTri!=null) {
-                        it.cast(lastTri,tempRay);
-                        tempRay.castAny = true;
-                    }
+
+                    //if(lastTri!=null) {
+                        //pre-loading the last triangle currently provides no real benefits
+                        //it.cast(lastTri,tempRay);
+                        //tempRay.castAny = true;
+                    //}
                     long startTime = 0;
 
                     if(Options.colorTime)  startTime = System.nanoTime();
@@ -212,7 +215,13 @@ public class RayTracer {
                 }
                 prevprev = new Vec(prev);
                 prev = new Vec(tempRay.color);*/
-                
+
+
+                /*if(tempRay.Itri != null){
+                    bi.setRGB(x - startx, y - starty, 0xFF0000FF);
+                } else {
+                    bi.setRGB(x - startx, y - starty, 0xFF000000);
+                }*/
                 bi.setRGB(x - startx, y - starty, 0xFF<<24|((int)(tempRay.color.x*255))<<16|((int)(tempRay.color.y*255))<<8|((int)(tempRay.color.z*255)));
             }
         }
@@ -265,7 +274,7 @@ public class RayTracer {
         
         return fracDir;
     }
-    
+
     public static Vec calcNormal(Ray r){
         float w = 1-(r.u+r.v);
             
@@ -328,9 +337,8 @@ public class RayTracer {
     }
 
     public void colorRay(Ray r, Intersector it){
+
         Vec normal = calcNormal(r);
-
-
 
         if(nray.Options.colorphits){
 
@@ -438,16 +446,16 @@ public class RayTracer {
 
                 //Phong lighting ignorant of the rest of the scene.
                 float dscale = normal.dot(dir);
-                float sscale = dir.dot(r.ray);
+                //float sscale = dir.dot(r.ray); //specular, not used
 
-                sscale *= .5f;
+                //sscale *= .5f;
 
                 if(dscale<0){
                     dscale = Math.max(dscale,0f);
                     r.color.addInPlace(0,dscale,0);
                 } else {
-                    sscale = Math.max(sscale,0f);
-                    sscale = (float)Math.pow(sscale,7f);
+                    //sscale = Math.max(sscale,0f);
+                    //sscale = (float)Math.pow(sscale,7f);
                     r.color.addInPlace(color.x*dscale,color.y*dscale,color.z*dscale);
                 }
                 r.color.addInPlace(.2f,.2f,.2f);

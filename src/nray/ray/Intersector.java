@@ -44,14 +44,12 @@ public class Intersector {
     //ray box intersection
     //private static Vec S = new Vec(), T = new Vec();
     public boolean cast(Ray r,Box b){
-        //if(b.lastS>r.t) return false;
         
-        RayTracer.castAgainstB++;
+        RayTracer.castAgainstB++; //not thread safe, but it's just for diagnostics so we'll survive missing some casts to not have a volatile here
         float maxS = -Float.MAX_VALUE;
         float minT = r.t;//Float.MAX_VALUE;
         Vec mMin = b.min;
         Vec mMax = b.max;
-        float ps, pt;
         
         r.boxHits++;
         
@@ -63,10 +61,9 @@ public class Intersector {
             }
             hit.x = r.origin.x;
         } else {
-            float s = (mMin.x - r.origin.x)/r.ray.x;
-            float t = (mMax.x - r.origin.x)/r.ray.x;
-            //ps = Math.abs(s);
-            //pt = Math.abs(t);
+            float s = (mMin.x - r.origin.x) * r.rayInv.x;
+            float t = (mMax.x - r.origin.x) * r.rayInv.x;
+
             if(s > t){
                 float temp = s;
                 s = t;
@@ -88,10 +85,9 @@ public class Intersector {
             }
             hit.y = r.origin.y;
         } else {
-            float s = (mMin.y - r.origin.y)/r.ray.y;
-            float t = (mMax.y - r.origin.y)/r.ray.y;
-            //ps = Math.abs(s);
-            //pt = Math.abs(t);
+            float s = (mMin.y - r.origin.y) * r.rayInv.y;
+            float t = (mMax.y - r.origin.y) * r.rayInv.y;
+
             if(s > t){
                 float temp = s;
                 s = t;
@@ -113,10 +109,9 @@ public class Intersector {
             }
             hit.z = r.origin.z;
         } else {
-            float s = (mMin.z - r.origin.z)/r.ray.z;
-            float t = (mMax.z - r.origin.z)/r.ray.z;
-            //ps = Math.abs(s);
-            //pt = Math.abs(t);
+            float s = (mMin.z - r.origin.z) * r.rayInv.z;
+            float t = (mMax.z - r.origin.z) * r.rayInv.z;
+
             if(s > t){
                 float temp = s;
                 s = t;
@@ -132,8 +127,8 @@ public class Intersector {
             }
         }
 
-
         //r.Ibox = b;
+
         r.s = maxS;
         r.boxT = minT;
         b.lastS = maxS;
@@ -163,7 +158,7 @@ public class Intersector {
         
         float f = 1f/a;
         
-        r.origin.sub(p0,s);  //rayOrigin-p0
+        r.origin.sub(p0,s);
         float u = f*s.dot(p);
         //if(u < 0f || u > 1f) return false;
         

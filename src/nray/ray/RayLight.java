@@ -33,7 +33,8 @@ public class RayLight {
     RayScene rs;
     Vec pos;
     int numPhotons;
-    
+
+    //list of photon hits
     ArrayList<Vec> pheap = new ArrayList<Vec>();
     
     public RayLight(RayScene rs,int numPhotons,Vec pos){
@@ -53,116 +54,17 @@ public class RayLight {
 
         Intersector it = new Intersector();
 
-        /*for(RTObject target: targets){
-        
-            //RTObject target = targets.get((int)(0f));//Math.random()*targets.size()));
-            Vec dir = target.pos.sub(pos);
-
-            Box box = target.bvh.aabbs.get(1);
-            range.x = box.max.x - box.min.x;
-            range.y = box.max.y - box.min.y;
-            range.z = box.max.z - box.min.z;
-
-            Vec photon = new Vec();//new Vec(box.min.sub(pos));
-            Vec minDist = box.min.sub(pos);
-
-            int xlimit, ylimit, zlimit;
-            xlimit = ylimit = zlimit = 15;
-
-
-
-            for(int i = 0;i<xlimit;i++){
-                for(int j = 0;j<ylimit;j++){
-                    for(int k = 0;k<zlimit;k++){
-                        photon.set(minDist.x+range.x*(((float)i)/xlimit),
-                                minDist.y+range.y*(((float)j)/ylimit),
-                                minDist.z+range.z*(((float)k)/zlimit));
-                        Vec p = photon.normalize();
-                        //System.out.println(photon);
-                        Ray r = new Ray(p,pos);
-
-                        rs.cast(r, it);
-
-                        if(r.intersection!=null){
-                            Ray tray = r;
-                            int bounces = 3;
-                            //System.out.println(tray.object +" "+rs.objects.get(2));
-                            Ray lastGood = r;
-
-                            //photon retransmission
-                            while(tray.object.equals(rs.objects.get(0))){
-
-                                //System.out.println("retransmit");
-
-                                Vec fracDir = RayTracer.refract(tray.ray, RayTracer.calcNormal(tray), 1.5f);
-
-                                Ray refractionRay = new Ray(fracDir,tray.intersection.add(fracDir.scaleNew(.0001f)));
-
-                                rs.cast(refractionRay);
-
-                                if(refractionRay.intersection!=null){
-                                    if(tray.Itri.equals(refractionRay.Itri)){
-                                        System.out.println("sigh...");
-                                    }
-                                    tray = refractionRay;
-                                    if(!tray.hitBackfacing){
-                                        lastGood = tray;
-                                    }
-                                } else {
-                                    if(tray.equals(r)){
-                                        System.out.println("missed");
-                                        lastGood = null;
-                                    }
-                                    break;
-                                }
-                            }
-
-                            if(lastGood==null) continue;
-
-                            if(tray.hitBackfacing){
-                                //System.out.println("doh");
-                                continue;
-                            }
-
-                            addPhoton(lastGood.intersection);
-                        }
-
-                    }
-                }
-            }
-        }*/
-            
-        /*for(int i = 0;i<numPhotons;i++){
-            
-            RTObject target = targets.get((int)(Math.random()*targets.size()));
-            Vec dir = target.pos.sub(pos);
-            Box box = target.bvh.aabbs.get(1);
-            
-            float xdiff = box.min.x - box.max.x;
-            float ydiff = box.min.y - box.max.y;
-            float zdiff = box.min.z - box.max.z;
-            
-            dir.addInPlace(new Vec(Math.random()*xdiff-(xdiff/2),Math.random()*ydiff-(ydiff/2),Math.random()*zdiff-(zdiff/2)));
-            //dir.addInPlace(new Vec(Math.random()*2-1,Math.random()*2-1,Math.random()*2-1));
-            dir.normalizeInPlace();
-            Ray r = new Ray(dir, pos);
-            rs.cast(r);
-            
-            if(r.intersection!=null){
-                addPhoton(r.intersection);
-            }
-        }*/
+        int halfPhotonsAtEquator = 500;
 
         for(float phi = 0; phi < Math.PI * 2; phi += Math.PI / 400){
-            for(float theta = 0; theta < Math.PI * 2; theta += Math.PI / 400){
+            float thetaStep = (float)(Math.PI / 400);//(float)(Math.PI / (halfPhotonsAtEquator * Math.max(.01f, Math.sin(phi)) ) );
+            for(float theta = 0; theta < Math.PI * 2; theta += thetaStep ){
 
-                Vec dir = new Vec(Math.cos(theta)*Math.sin(phi),Math.cos(phi),Math.sin(theta)*Math.sin(phi));//target.pos.sub(pos);
+                Vec dir = new Vec(Math.cos(theta)*Math.sin(phi),Math.cos(phi),Math.sin(theta)*Math.sin(phi));
                 if(dir.mag() > 1.0001 || dir.mag() < .9999){
                     System.out.println("I have work to do");
                 }
-                //dir.addInPlace(new Vec(Math.random()*xdiff-(xdiff/2),Math.random()*ydiff-(ydiff/2),Math.random()*zdiff-(zdiff/2)));
-                //dir.addInPlace(new Vec(Math.random()*2-1,Math.random()*2-1,Math.random()*2-1));
-                //dir.normalizeInPlace();
+
                 Ray r = new Ray(dir, pos);
                 rs.cast(r, it);
 
@@ -222,33 +124,15 @@ public class RayLight {
         switch(depth%3){
             case 0:
                 Arrays.sort(hits,new Xcomp());
-                /*last = hits[0].x;
-                for(int i = 1;i<hits.length;i++){
-                    if(last>hits[i].x){
-                        System.out.println("... troubledoubleX");
-                    }
-                    last = hits[i].x;
-                }*/
+
                 break;
             case 1:
                 Arrays.sort(hits,new Ycomp());
-                /*last = hits[0].y;
-                for(int i = 1;i<hits.length;i++){
-                    if(last>hits[i].y){
-                        System.out.println("... troubledoubleY");
-                    }
-                    last = hits[i].y;
-                }*/
+
                 break;
             case 2:
                 Arrays.sort(hits,new Zcomp());
-                /*last = hits[0].z;
-                for(int i = 1;i<hits.length;i++){
-                    if(last>hits[i].z){
-                        System.out.println("... troubledoubleZ");
-                    }
-                    last = hits[i].z;
-                }*/
+
                 break;
             default:
                 System.out.println("Bad..");
@@ -337,12 +221,12 @@ public class RayLight {
                     }
                     break;
             }
-            
+            depth++;
         }
         for(int i = pheap.size();i<index;i++){
             pheap.add(null);
-        }*/
-        //pheap.add(index,pos);
+        }
+        pheap.add(index,pos);*/
         pheap.add(pos);
     }
     
@@ -357,7 +241,7 @@ public class RayLight {
         if(nray.Options.hardGather){
             //System.out.println("Doh");
             int hits = 0;
-            for(Vec v:pheap){
+            for(Vec v:bheap){
                 if(v==null) continue;
                 if(pos.sub(v).mag()<distance.mag()){
                     hits++;
@@ -366,20 +250,33 @@ public class RayLight {
             return hits;
         } else {
             //System.out.println("hm");
-            return gather(pos,distance,1,0,0);
+            int ghits =  gather(pos,distance.realMagnitude(),1,0,0);
+
+            /*int hits = 0;
+            for(Vec v:bheap){
+                if(v==null) continue;
+                if(pos.sub(v).mag()<distance.mag()){
+                    hits++;
+                }
+            }
+            if(ghits != hits){
+                System.out.println("We have a problem");
+                gather(pos, distance, 1, 0, 0);
+            }*/
+            return ghits;
         }
     }
     
 
     
-    private int gather(Vec pos,Vec distance,int index,int depth,int failures){
+    private int gather(Vec pos,float distance,int index,int depth,int failures){
         
-        if(index>=pheap.size()) return 0;
+        if(index>=bheap.size()) return 0;
         //if(failures>4) return 0;
-        
-        Vec v = pheap.get(index);
+
+        Vec v = bheap.get(index);
         if(v==null) {
-            if(index*2<pheap.size()){
+            if(index*2<bheap.size()){
                 System.out.println("This should not be");
             }
             return 0;
@@ -389,12 +286,12 @@ public class RayLight {
         int hit = 0;
         int fail = 0;
         //if((Math.abs(v.x-pos.x)<distance.x)&&(Math.abs(v.y-pos.y)<distance.y)&&(Math.abs(v.z-pos.z)<distance.z)){
-        if(pos.sub(v).mag()<distance.mag()){
+        if(pos.sub(v).realMagnitude() < distance){
             hit++;
         } else {
             fail++;
         }
-        
+
         /*
         index = leftChild(index);
         //} else {
@@ -402,13 +299,14 @@ public class RayLight {
         index = rightChild(index);
         hit+=gather(pos,distance,index,depth+1,failures+fail)+hit;*/
 
-        
+
         switch(depth%3){
             case 0:
-                if(pos.x-distance.x*2<=v.x){
+
+                if(pos.x-distance<=v.x){
                     hit+=gather(pos,distance,leftChild(index),depth+1,failures+fail);
                 }
-                if(pos.x+distance.x*2>=v.x){
+                if(pos.x+distance>=v.x){
                     hit+=gather(pos,distance,rightChild(index),depth+1,failures+fail);
                 }
                 //if(pos.x+Math.pow(distance.x,2)>=v.x){
@@ -416,14 +314,14 @@ public class RayLight {
                 //}
                 break;
             case 1:
-                
-                if(pos.y-distance.y*2<=v.y){
+
+                if(pos.y-distance<=v.y){
                     hit+=gather(pos,distance,leftChild(index),depth+1,failures+fail);
                 }
-                if(pos.y+distance.y*2>=v.y){
+                if(pos.y+distance>=v.y){
                     hit+=gather(pos,distance,rightChild(index),depth+1,failures+fail);
                 }
-                
+
                 //if(pos.y-Math.pow(distance.y,2)<=v.y){
                 //    hit+=gather(pos,distance,leftChild(index),depth+1,failures+fail);
                 //}
@@ -433,10 +331,10 @@ public class RayLight {
 
                 break;
             case 2:
-                if(pos.z-distance.z*2<=v.z){
+                if(pos.z-distance<=v.z){
                     hit+=gather(pos,distance,leftChild(index),depth+1,failures+fail);
                 }
-                if(pos.z+distance.z*2>=v.z){
+                if(pos.z+distance>=v.z){
                     hit+=gather(pos,distance,rightChild(index),depth+1,failures+fail);
                 }
                 //if(pos.z-Math.pow(distance.z,2)<=v.z){
@@ -448,10 +346,9 @@ public class RayLight {
 
                 break;
         }
-        
-        
-        
-        return hit;//gather(pos,distance,index,depth+1,failures+fail)+hit;
+
+
+        return hit;
     }
     
 }

@@ -83,7 +83,8 @@ public class BVH {
             i++;
             //split!
         }
-        System.out.println(aabbs.size()+" boxes... more or less "+boxCount+" "+totalTris+" triangles");
+
+        System.out.println(aabbs.size()+" boxes... more or less "+boxCount+" boxes, "+totalTris+" triangles");
         /*System.out.println(i);
         for(int j = 1;j<aabbs.size();j++){
             System.out.println("Box index: "+j);
@@ -156,7 +157,6 @@ public class BVH {
                 }
                 
                 Box maxBoxX = new Box(tmin,tmax);
-                
                 
                 tmin = new Vec(Float.POSITIVE_INFINITY,Float.POSITIVE_INFINITY,Float.POSITIVE_INFINITY);
                 tmax = new Vec(Float.NEGATIVE_INFINITY,Float.NEGATIVE_INFINITY,Float.NEGATIVE_INFINITY);
@@ -375,7 +375,7 @@ public class BVH {
                     winless = lessX;
                     wingreater = greaterX;
                     shared = sharedX;
-                    b.color = Box.X_COLOR;//new Vec(0.1f,0f,0f);
+                    b.color = Box.X_COLOR;
                 } else if(yCost<zCost){
                     //System.out.println("Improvement: "+curCost/yCost);
                     winminBox = minBoxY;
@@ -383,14 +383,14 @@ public class BVH {
                     winless = lessY;
                     wingreater = greaterY;
                     shared = sharedY;
-                    b.color = Box.Y_COLOR;//new Vec(0f,0.1f,0f);
+                    b.color = Box.Y_COLOR;
                 } else {
                     winminBox = minBoxZ;
                     winmaxBox = maxBoxZ;
                     winless = lessZ;
                     wingreater = greaterZ;
                     shared = sharedZ;
-                    b.color = Box.Z_COLOR;//new Vec(0f,0f,.1f);
+                    b.color = Box.Z_COLOR;
                 }
                 
                 //System.out.println(winmaxBox.min);
@@ -411,23 +411,6 @@ public class BVH {
         //System.out.println("<< "+aabbs.size()+" boxes");
         return true;
     }
-    
-    public float absmin(float one, float two){
-        if(Math.abs(one)<Math.abs(two)){
-            return one;
-        } else {
-            return two;
-        }
-    }
-    
-    public float absmax(float one, float two){
-        if(Math.abs(one)>Math.abs(two)){
-            return one;
-        } else {
-            return two;
-        }
-    }
-    
 
     public void cast(Ray r, Intersector it){
 
@@ -436,7 +419,7 @@ public class BVH {
         boolean hit = it.cast(r, aabbs.get(1));
         
         if(hit){
-            if(r.s>r.t) return;
+            //if(r.s>r.t) return;
             cast(r, it, 1);
         }
     }
@@ -460,7 +443,7 @@ public class BVH {
     //sindex = start index; box with triangle that was hit by previous ray
     public void reverseCast(Ray r, Intersector it, int sindex){
         Box b = aabbs.get(sindex);
-        int left;
+        int other;
         int index = sindex;
 
         //This only seems to happen when reverse casting against a scene with multiple objects
@@ -468,7 +451,7 @@ public class BVH {
             return;
         }
 
-        if(it.cast(r,b)){ //r.intersection==null&& ~10% boost, but technically not correct
+        if(it.cast(r,b)){
             r.boxIndex = sindex;
             r.boxColor.addInPlace(b.color);
             if (b.hasChildren){
@@ -480,29 +463,44 @@ public class BVH {
                 for(Triangle t:tris){
                     it.cast(t,r);
                 }
+
+                if(nray.Options.fastAndWrong){
+                    if(r.Itri != null){
+                        return;
+                    }
+                }
             }
+        } else {
+
         }
 
         float testS = r.s;
         
         float lastS = b.lastS;
-        while(index>1){
-            //mathematical trickery, mostly equivalent, 2 item lookup table the same
-            left = ((index&1)*-2)+1;//(index & 1) == 1 ? -1 : 1;
-            b = aabbs.get(index+left);
-            r.boxColor.addInPlace(b.color);
-            
-            if(b!=null&&it.cast(r, b)){
+        //if(!nray.Options.fastAndWrong){
+            while(index > 1){
+                //mathematical trickery, mostly equivalent, 2 item lookup table the same, offset to the sibling node
+                other = ((index&1)*-2)+1;//(index & 1) == 1 ? -1 : 1;
+                b = aabbs.get(index+other);
+                r.boxColor.addInPlace(b.color);
 
-                cast(r,it,index+left);
+                if(b!=null&&it.cast(r, b)){
 
-                if(r.boxIndex<0){
-                    r.boxIndex = index;
+                    if(r.s > r.t){
+                        index /= 2;
+                        continue;
+                    }
+
+                    cast(r,it,index+other);
+
+                    if(r.boxIndex<0){
+                        r.boxIndex = index;
+                    }
                 }
+                index /= 2;
+
             }
-            index /= 2;
-            
-        }
+        //}
     }
     
     
@@ -515,10 +513,9 @@ public class BVH {
         if(index>r.boxIndex&&r.Itri==null){
             r.boxIndex = index;
         }
-        
 
         if(boxTris.get(index)!=null&&boxTris.get(index).size()>0){
-            // System.out.println("Ding");
+
             float oldT = r.t;
             ArrayList<Triangle> tris = boxTris.get(index);
             for(Triangle t:tris){
@@ -527,35 +524,40 @@ public class BVH {
             if(r.t<oldT){
                 r.boxIndex = index;
             }
-        }// else {
-            //System.out.println("Bing");
-        if(aabbs.get(index).hasChildren){
+        } else if(aabbs.get(index).hasChildren){
             boolean hitLeft = it.cast(r, aabbs.get(leftChild(index)));
             float dLeft = r.s;
             boolean hitRight = it.cast(r, aabbs.get(rightChild(index)));
             float dRight = r.s;
 
             if(!nray.Options.bvhcull){
-                if(hitLeft)   cast(r,it,leftChild(index));
+                if(hitLeft)   cast(r, it, leftChild(index));
                 if(hitRight)  cast(r, it, rightChild(index));
                 return;
             }
-            
+
+            //this almost never happens so it's not worth the test
+            /*if(r.t < dLeft && r.t < dRight){
+                return; //don't care, can't hit anything
+            }*/
+
             if(hitLeft){
                 if(hitRight){
                     if(dLeft<dRight){
-                        float oldT = r.t;
+
                         cast(r,it,leftChild(index));
-                        if(oldT>r.t&&r.t<dRight){
+                        float oldT = r.t;
+                        if(r.t<dRight){
                             return;
                         }
                         cast(r,it,rightChild(index));
                     } else {
-                        float oldT = r.t;
+
                         cast(r,it,rightChild(index));
-                        if(oldT>r.t&&r.t<dLeft){
+                        if(r.t<dLeft){
                             return;
                         }
+                        float oldT = r.t;
                         cast(r,it,leftChild(index));
                     }
                 } else {

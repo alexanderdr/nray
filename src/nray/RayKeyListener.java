@@ -97,12 +97,14 @@ public class RayKeyListener extends KeyAdapter{
             case 'r':
                 Options.reflection=!Options.reflection;
                 break;
-            case 'b':
-                System.out.println("BVH: "+!Options.subbox);
-                Options.subbox=!Options.subbox;
-                break;
             case 'B':
                 Options.bvhcolor=!Options.bvhcolor;
+                break;
+            case 'z':
+                Options.bvhcull=!Options.bvhcull;
+                break;
+            case 'F':
+                Options.fastAndWrong = !Options.fastAndWrong;
                 break;
             case 'l':
                 Options.colorBlack=!Options.colorBlack;

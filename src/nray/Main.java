@@ -27,8 +27,11 @@ package nray;
  */
 import nray.ray.*;
 import java.awt.image.BufferedImage;
+import java.util.Vector;
 import java.io.*;
 import java.awt.*;
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class Main {
 
     public static Frame frame;
@@ -79,38 +82,75 @@ public class Main {
             int count = 0;
             float averageFPS = 0;
             int framesOut = 0;
-            final int threadCount = 40; //this needs to be a multiple of our ray image size
+            //because we always want as many software threads as the software supports, this seems like a reasonable number
+            //ideally should be set in the config file:
+            final int threadCount = 40;
             RunnerThread[] runners = new RunnerThread[threadCount];
-            BufferedImage[] imageSlices = new BufferedImage[threadCount];
-            Graphics[] graphicsArray = new Graphics[threadCount];
 
-            BufferedImage intermediateImage = new BufferedImage(rayViewWidth, rayViewHeight, BufferedImage.TYPE_INT_ARGB);
+            BufferedImage intermediateImage = new BufferedImage(rayViewWidth, rayViewHeight, BufferedImage.TYPE_INT_ARGB_PRE);
             Graphics iig = intermediateImage.getGraphics();
 
-            for(int curThreadIndex = 0; curThreadIndex < threadCount; curThreadIndex++){
-                BufferedImage bi = new BufferedImage(rayViewWidth,rayViewHeight/threadCount,BufferedImage.TYPE_INT_ARGB);
+            //these should ideally be settable in the config file as well
+            final int chunkHeightsPerImage = 20; //this needs to be a multiple of our ray image size
+            final int chunkWidthsPerImage = 8;
+            final int chunkCount = chunkWidthsPerImage * chunkHeightsPerImage;
+            RenderChunk[] chunks = new RenderChunk[chunkCount];
+
+            BufferedImage[] imageSlices = new BufferedImage[chunkCount];
+            Graphics[] graphicsArray = new Graphics[chunkCount];
+
+            Object frameLock = new Object();
+            AtomicInteger chunksLeft = new AtomicInteger(0);
+
+            System.out.println("The render loop is now going");
+
+            for(int curThreadIndex = 0; curThreadIndex < chunkCount; curThreadIndex++){
+                BufferedImage bi = new BufferedImage(rayViewWidth/chunkWidthsPerImage, rayViewHeight/chunkHeightsPerImage, BufferedImage.TYPE_INT_ARGB_PRE);
                 imageSlices[curThreadIndex] = bi;
                 graphicsArray[curThreadIndex] = bi.getGraphics();
             }
 
-            System.out.println("The render loop is now going");
+            for(int curThreadIndex = 0; curThreadIndex < threadCount; curThreadIndex++){
+                runners[curThreadIndex] = new RunnerThread(rt, chunks, chunksLeft, frameLock);//new RunnerThread(rt, imageSlices[curThreadIndex], 0, (curThreadIndex * rayViewHeight) / threadCount, rayViewWidth, ((curThreadIndex + 1) * rayViewHeight) / threadCount);
+                runners[curThreadIndex].start();
+            }
+
             while(true){
+
                 time = System.currentTimeMillis();
-                if(!Options.oneRenderThread){
-                    for(int curThreadIndex = 0; curThreadIndex < threadCount; curThreadIndex++){
-                        runners[curThreadIndex] = new RunnerThread(rt, imageSlices[curThreadIndex], 0, (curThreadIndex * rayViewHeight) / threadCount, rayViewWidth, ((curThreadIndex + 1) * rayViewHeight) / threadCount);
-                        runners[curThreadIndex].start();
+                for(int y = 0; y < chunkHeightsPerImage; y++){
+                    for(int x = 0;x < chunkWidthsPerImage; x++){
+                        chunks[x + (y * chunkWidthsPerImage)] = new RenderChunk(imageSlices[x + (y * chunkWidthsPerImage)], x * (rayViewWidth / chunkWidthsPerImage), y * (rayViewHeight / chunkHeightsPerImage),
+                                (x + 1) * (rayViewWidth / chunkWidthsPerImage), (y + 1) * (rayViewHeight / chunkHeightsPerImage));
                     }
-                    for(int curThreadIndex = 0; curThreadIndex < threadCount; curThreadIndex++){
-                        runners[curThreadIndex].join();
-                        iig.drawImage(imageSlices[curThreadIndex], 0, (curThreadIndex * rayViewHeight) / threadCount, rayViewWidth, rayViewHeight / threadCount, null);
+                }
+                chunksLeft.set(chunkCount - 1);
+                if(!Options.oneRenderThread){
+                    synchronized(frameLock){
+                        frameLock.notifyAll();
+                    }
+
+                    for(int curChunkIndex = chunkCount - 1; curChunkIndex >= 0; curChunkIndex--){
+                        synchronized(chunks[curChunkIndex]){
+                            while(!chunks[curChunkIndex].isComplete()){
+                                try{
+                                    chunks[curChunkIndex].wait();
+                                } catch (InterruptedException ie){
+                                    ie.printStackTrace();
+                                }
+                            }
+                        }
+                        RenderChunk chunk = chunks[curChunkIndex];
+                        iig.drawImage(imageSlices[curChunkIndex], chunk.startx, chunk.starty, chunk.endx - chunk.startx, chunk.endy - chunk.starty, null);
                     }
                 } else {
+                    //just do it with this thread
                     rt.render(intermediateImage, iig, 0, 0, rayViewWidth, rayViewHeight);
                 }
 
+
                 camera.set(controlledCamera); //defers any camera position changes to between frames, prevents tearing
-                fg.drawImage(intermediateImage, 8, 30, null);
+                fg.drawImage(intermediateImage, 8, 30, null); //constants deal with the UI title bar and sides.
 
                 try{
                     last = System.currentTimeMillis();
@@ -159,12 +199,13 @@ public class Main {
     
 }
 
-class RunnerThread extends Thread{
+class RenderChunk{
     int startx, starty, endx, endy;
     RayTracer rt;
     BufferedImage bi;
     Graphics g;
-    public RunnerThread(RayTracer rt, BufferedImage bi, int startx, int starty, int endx, int endy){
+    boolean isComplete = false;
+    public RenderChunk(BufferedImage bi, int startx, int starty, int endx, int endy){
         this.startx = startx;
         this.starty = starty;
         this.endx = endx;
@@ -173,7 +214,61 @@ class RunnerThread extends Thread{
         this.bi = bi;
         this.g = bi.getGraphics();
     }
+
+    public synchronized boolean isComplete(){
+        return isComplete;
+    }
+
+    public synchronized void setComplete(boolean completeness){
+        isComplete = completeness;
+        if(isComplete){
+            notifyAll();
+        }
+    }
+}
+
+class RunnerThread extends Thread{
+    int startx, starty, endx, endy;
+    RayTracer rt;
+    BufferedImage bi;
+    Graphics g;
+    RenderChunk[] remainingChunks;
+    Object frameLock;
+    AtomicInteger chunkCount;
+    public RunnerThread(RayTracer rt, RenderChunk[] remainingChunks, AtomicInteger chunkCount, Object frameLock){
+        this.rt = rt;
+        this.remainingChunks = remainingChunks;
+        this.chunkCount = chunkCount;
+        this.frameLock = frameLock;
+    }
+
+
+
     public void run(){
-        rt.render(bi, g, startx, starty, endx, endy);
+        while(true){
+
+            RenderChunk chunk = null;
+            synchronized (remainingChunks){
+                if(chunkCount.get() >= 0){
+                    chunk = remainingChunks[chunkCount.getAndDecrement()];
+                }
+            }
+            if(chunk != null){
+                rt.render(chunk.bi, chunk.g, chunk.startx, chunk.starty, chunk.endx, chunk.endy);
+                chunk.setComplete(true);
+            } else {
+                try{
+
+                    synchronized(frameLock){
+                        while(chunkCount.get() < 0){
+                            frameLock.wait();
+                        }
+                    }
+                } catch (InterruptedException ie){
+                    ie.printStackTrace();
+                }
+            }
+
+        }
     }
 }
