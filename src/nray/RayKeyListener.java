@@ -111,6 +111,7 @@ public class RayKeyListener extends KeyAdapter{
                 break;
             case 'M':
                 Options.oneRenderThread=!Options.oneRenderThread;
+                System.out.println("Multi-threading: "+(!Options.oneRenderThread));
                 break;
             case 'R':
                 Options.reverseCast=!Options.reverseCast;

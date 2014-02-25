@@ -39,6 +39,7 @@ public class Ray{
     Triangle Itri; //triangle of intersection
     Box Ibox;
     int boxIndex;
+    BinaryBox hitBox;
     int boxHits = 0;
     int triHits = 0;
     float u = -1,v = -1;

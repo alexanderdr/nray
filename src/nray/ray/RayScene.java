@@ -30,7 +30,7 @@ package nray.ray;
  */
 import java.util.*;
 import nray.*;
-public class RayScene {
+public class RayScene implements Cloneable{
     
     ArrayList<RTObject> objects = new ArrayList<RTObject>();
     
@@ -72,10 +72,38 @@ public class RayScene {
             last = r.intersection;
         }
     }
+
+    public void reverseCast(Ray r, Intersector it, BinaryBox guessBox, RTObject lastObject){
+        //eventually this will be optimized to eliminate recasting the ray against
+        //more distant objects when a hit has already been found
+        Vec last = null;//new Vec();
+        for(RTObject rto:objects){
+            if(lastObject == rto){
+                rto.reverseCast(r, it, guessBox);
+            } else {
+                rto.cast(r, it);
+            }
+            if((r.intersection!=null)&&(!r.intersection.equals(last))){
+                r.object = rto;
+            }
+            last = r.intersection;
+        }
+    }
     
     public void clearS(){
         for(RTObject rto: objects){
             rto.clearS();
         }
+    }
+
+    public RayScene clone(){
+        RayScene copy = null;
+        try{
+            copy = (RayScene)super.clone();
+        } catch (CloneNotSupportedException cnse){
+            cnse.printStackTrace();
+        }
+        copy.objects = (ArrayList<RTObject>)objects.clone();
+        return copy;
     }
 }

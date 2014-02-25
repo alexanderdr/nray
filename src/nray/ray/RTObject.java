@@ -96,7 +96,7 @@ public class RTObject {
         rightstart.x = pivot.x;
         rightaabb = new Box(rightstart, tmax);
         System.out.println(left.size() +" "+right.size());
-        System.out.println(leftaabb.min + " | " + leftaabb.max +" | "+rightaabb.min +" | "+rightaabb.max);
+        //System.out.println(leftaabb.min + " | " + leftaabb.max +" | "+rightaabb.min +" | "+rightaabb.max);
         aabb = new Box(tmin,tmax);
         
         bvh = new BVH(tris,4);
@@ -175,7 +175,6 @@ public class RTObject {
     public static float icullRate = 0;
     public void cast(Ray r, Intersector it){
         bvh.cast(r, it);
-
     }
     
     public void clearS(){
@@ -185,7 +184,23 @@ public class RTObject {
     public void reverseCast(Ray r, Intersector it, int index){
         bvh.reverseCast(r, it, index);
     }
-    
+
+    public void reverseCast(Ray r, Intersector it, BinaryBox guessBox){
+        bvh.reverseCast(r, it, guessBox);
+    }
+
+    public RTObject clone(){
+        RTObject copy = null;
+        try{
+            copy = (RTObject)super.clone();
+        } catch (CloneNotSupportedException cnse){
+            cnse.printStackTrace();
+        }
+        copy.bvh = bvh.clone();
+
+        return copy;
+    }
+
 }
 
 

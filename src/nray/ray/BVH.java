@@ -33,6 +33,10 @@ public class BVH {
     ArrayList<Triangle> triangles;
     ArrayList<Box> aabbs = new ArrayList<Box>();
     ArrayList<ArrayList<Triangle>> boxTris = new ArrayList<ArrayList<Triangle>>();
+    ArrayList<ArrayList<SmallTriangle>> boxTrisSmall = new ArrayList<ArrayList<SmallTriangle>>();
+
+    BinaryBox root;
+
     public BVH(ArrayList<Triangle> tris,int resolution){
         targetRes = resolution;
         this.triangles = tris;
@@ -85,6 +89,23 @@ public class BVH {
         }
 
         System.out.println(aabbs.size()+" boxes... more or less "+boxCount+" boxes, "+totalTris+" triangles");
+
+        //Clone our lists of larger triangles with smaller triangles
+        for(ArrayList<Triangle> alt: boxTris){
+            if(alt != null){
+                ArrayList<SmallTriangle> smalltris = new ArrayList<SmallTriangle>();
+                for(Triangle t: alt){
+                    smalltris.add(new SmallTriangle(t));
+                }
+                boxTrisSmall.add(smalltris);
+            } else {
+                boxTrisSmall.add(null);
+            }
+        }
+
+        root = new BinaryBox(aabbs.get(1));
+        buildBinaryBoxTree(1, root);
+
         /*System.out.println(i);
         for(int j = 1;j<aabbs.size();j++){
             System.out.println("Box index: "+j);
@@ -92,7 +113,28 @@ public class BVH {
             System.out.println("    "+aabbs.get(j).max.x+" "+aabbs.get(j).max.y+" "+aabbs.get(j).max.z+" ");
         }*/
     }
-    
+
+    public void buildBinaryBoxTree(int index, BinaryBox cur){
+        Box b = aabbs.get(index);
+        if(b == null) return;
+
+        ArrayList<SmallTriangle> tris = boxTrisSmall.get(index);
+        if(tris != null && tris.size() > 0){
+            cur.triangles = tris;
+        }
+
+        if(b.hasChildren){
+            cur.addLeftChild(aabbs.get(leftChild(index)));
+            cur.addRightChild(aabbs.get(rightChild(index)));
+            if(cur.left != null){
+                buildBinaryBoxTree(leftChild(index), cur.left);
+            }
+            if(cur.right != null){
+                buildBinaryBoxTree(rightChild(index), cur.right);
+            }
+        }
+    }
+
     final float growthLimit = 1.20f;
     
     public boolean split2(int aabbIndex){
@@ -107,13 +149,10 @@ public class BVH {
             float[] points = new float[tris.size()];
             ArrayList<Triangle> greaterX = new ArrayList<Triangle>();
             ArrayList<Triangle> lessX = new ArrayList<Triangle>();
-            ArrayList<Triangle> sharedX = new ArrayList<Triangle>(0);
             ArrayList<Triangle> greaterY = new ArrayList<Triangle>();
             ArrayList<Triangle> lessY = new ArrayList<Triangle>();
-            ArrayList<Triangle> sharedY = new ArrayList<Triangle>(0);
             ArrayList<Triangle> greaterZ = new ArrayList<Triangle>();
             ArrayList<Triangle> lessZ = new ArrayList<Triangle>();
-            ArrayList<Triangle> sharedZ = new ArrayList<Triangle>(0);
             
                 //Begin X checks
                 for(int i = 0;i<tris.size();i++){
@@ -142,13 +181,13 @@ public class BVH {
                 //if(greaterX.size()==0||lessX.size()==0) {
                 //    System.out.println("lulwut? greater");
                 //}
-                tmax.x = Math.min(tmax.x,b.max.x);
-                tmax.y = Math.min(tmax.y,b.max.y);
-                tmax.z = Math.min(tmax.z,b.max.z);
+                tmax.x = Math.min(tmax.x,b.ax);
+                tmax.y = Math.min(tmax.y,b.ay);
+                tmax.z = Math.min(tmax.z,b.az);
                 //tmin.x = median;
                 //tmin.x = Math.max(tmin.x,median);
-                tmin.y = Math.max(tmin.y,b.min.y);
-                tmin.z = Math.max(tmin.z,b.min.z);
+                tmin.y = Math.max(tmin.y,b.iy);
+                tmin.z = Math.max(tmin.z,b.iz);
                 
                 if(tmin.x>tmax.x){
                     float temp = tmin.x;
@@ -167,12 +206,12 @@ public class BVH {
                 
                 //tmax.x = median;
                 //tmax.x = Math.min(tmax.x,median);
-                tmax.y = Math.min(tmax.y,b.max.y);
-                tmax.z = Math.min(tmax.z,b.max.z);
+                tmax.y = Math.min(tmax.y,b.ay);
+                tmax.z = Math.min(tmax.z,b.az);
                 
-                tmin.x = Math.max(tmin.x,b.min.x);
-                tmin.y = Math.max(tmin.y,b.min.y);
-                tmin.z = Math.max(tmin.z,b.min.z);
+                tmin.x = Math.max(tmin.x,b.ix);
+                tmin.y = Math.max(tmin.y,b.iy);
+                tmin.z = Math.max(tmin.z,b.iz);
                 
                 if(tmin.x>tmax.x){
                     float temp = tmin.x;
@@ -218,12 +257,12 @@ public class BVH {
                 }
                 //tmin.y = median;
                 
-                tmax.x = Math.min(tmax.x,b.max.x);
-                tmax.y = Math.min(tmax.y,b.max.y);
-                tmax.z = Math.min(tmax.z,b.max.z);
+                tmax.x = Math.min(tmax.x,b.ax);
+                tmax.y = Math.min(tmax.y,b.ay);
+                tmax.z = Math.min(tmax.z,b.az);
                 //tmin.y = Math.max(tmin.y,median);
-                tmin.x = Math.max(tmin.x,b.min.x);
-                tmin.z = Math.max(tmin.z,b.min.z);
+                tmin.x = Math.max(tmin.x,b.ix);
+                tmin.z = Math.max(tmin.z,b.iz);
                 
                 if(tmin.y>tmax.y){
                     float temp = tmin.y;
@@ -241,11 +280,11 @@ public class BVH {
                 
                 //tmax.y = median;
                 //tmax.y = Math.min(tmax.y,median);
-                tmax.x = Math.min(tmax.x,b.max.x);
-                tmax.z = Math.min(tmax.z,b.max.z);
-                tmin.x = Math.max(tmin.x,b.min.x);
-                tmin.y = Math.max(tmin.y,b.min.y);
-                tmin.z = Math.max(tmin.z,b.min.z);
+                tmax.x = Math.min(tmax.x,b.ax);
+                tmax.z = Math.min(tmax.z,b.az);
+                tmin.x = Math.max(tmin.x,b.ix);
+                tmin.y = Math.max(tmin.y,b.iy);
+                tmin.z = Math.max(tmin.z,b.iz);
                 
                 if(tmin.y>tmax.y){
                     float temp = tmin.y;
@@ -269,7 +308,7 @@ public class BVH {
                 }
                 for(Triangle t:tris){
                     if(t.max.z>median&&t.min.z<median){
-                        sharedZ.add(t);
+                        //sharedZ.add(t);
                         //continue;
                     }
                     if(t.max.z>=median){
@@ -292,13 +331,13 @@ public class BVH {
                 }
                 //tmin.z = median;
                 
-                tmax.x = Math.min(tmax.x,b.max.x);
-                tmax.y = Math.min(tmax.y,b.max.y);
-                tmax.z = Math.min(tmax.z,b.max.z);
+                tmax.x = Math.min(tmax.x,b.ax);
+                tmax.y = Math.min(tmax.y,b.ay);
+                tmax.z = Math.min(tmax.z,b.az);
                 
                 //tmin.z = Math.max(tmin.z,median);
-                tmin.y = Math.max(tmin.y,b.min.y);
-                tmin.x = Math.max(tmin.x,b.min.x);
+                tmin.y = Math.max(tmin.y,b.iy);
+                tmin.x = Math.max(tmin.x,b.ix);
                 
                 if(tmin.z>tmax.z){
                     float temp = tmin.z;
@@ -317,12 +356,12 @@ public class BVH {
                 //tmax.z = median;
                 //tmax.z = Math.min(tmax.z,median);
                 
-                tmax.y = Math.min(tmax.y,b.max.y);
-                tmax.x = Math.min(tmax.x,b.max.x);
+                tmax.y = Math.min(tmax.y,b.ay);
+                tmax.x = Math.min(tmax.x,b.ax);
                 
-                tmin.x = Math.max(tmin.x,b.min.x);
-                tmin.y = Math.max(tmin.y,b.min.y);
-                tmin.z = Math.max(tmin.z,b.min.z);
+                tmin.x = Math.max(tmin.x,b.ix);
+                tmin.y = Math.max(tmin.y,b.iy);
+                tmin.z = Math.max(tmin.z,b.iz);
                 
                 if(tmin.z>tmax.z){
                     float temp = tmin.z;
@@ -374,7 +413,7 @@ public class BVH {
                     winmaxBox = maxBoxX;
                     winless = lessX;
                     wingreater = greaterX;
-                    shared = sharedX;
+
                     b.color = Box.X_COLOR;
                 } else if(yCost<zCost){
                     //System.out.println("Improvement: "+curCost/yCost);
@@ -382,14 +421,14 @@ public class BVH {
                     winmaxBox = maxBoxY;
                     winless = lessY;
                     wingreater = greaterY;
-                    shared = sharedY;
+
                     b.color = Box.Y_COLOR;
                 } else {
                     winminBox = minBoxZ;
                     winmaxBox = maxBoxZ;
                     winless = lessZ;
                     wingreater = greaterZ;
-                    shared = sharedZ;
+
                     b.color = Box.Z_COLOR;
                 }
                 
@@ -416,11 +455,13 @@ public class BVH {
 
         int depth;
         depth = 0;
-        boolean hit = it.cast(r, aabbs.get(1));
-        
+        //boolean hit = it.cast(r, aabbs.get(1));
+        boolean hit = it.cast(r, root);
+
         if(hit){
             //if(r.s>r.t) return;
-            cast(r, it, 1);
+            //cast(r, it, 1);
+            cast(r, it, root);
         }
     }
     
@@ -432,7 +473,7 @@ public class BVH {
     private void clearS(int index){
         Box b = aabbs.get(index);
         if(b==null) return;
-        b.clearS();
+        //b.clearS();
         if(b.hasChildren){
             clearS(index*2);
             clearS(index*2+1);
@@ -441,7 +482,82 @@ public class BVH {
     }
 
     //sindex = start index; box with triangle that was hit by previous ray
+
+    public void reverseCast(Ray r, Intersector it, BinaryBox guessBox){
+
+        BinaryBox b = guessBox;
+
+        //This only seems to happen when reverse casting against a scene with multiple objects
+        if(b == null){
+            return;
+        }
+
+        if(it.cast(r,b)){
+            //r.boxIndex = sindex;
+            r.hitBox = guessBox;
+            r.boxColor.addInPlace(b.color);
+            if (b.left != null || b.right != null){//it has children
+                cast(r,it,guessBox);
+            } else {
+                ArrayList<SmallTriangle> tris = guessBox.triangles;
+
+                //if(tris.size()>10) System.out.println(tris.size());
+                /*for(SmallTriangle t:tris){
+                    it.cast(t,r);
+                }*/
+
+                for(int i = 0; i < tris.size(); i++){
+                    it.cast(tris.get(i), r);
+                }
+
+                if(nray.Options.fastAndWrong){
+                    if(r.Itri != null){
+                        return;
+                    }
+                }
+            }
+        } else {
+
+        }
+
+        float testS = r.s;
+
+        //float lastS = b.lastS;
+        //if(!nray.Options.fastAndWrong){
+        BinaryBox curBox = b;
+        while(curBox.parent != null){
+            //mathematical trickery, mostly equivalent, 2 item lookup table the same, offset to the sibling node
+            //other = ((index&1)*-2)+1;//(index & 1) == 1 ? -1 : 1;
+            BinaryBox other;
+            BinaryBox temp = curBox.parent;
+            if(temp.left == curBox){
+                other = temp.right;
+            } else {
+                other = temp.left;
+            }
+            b = other;
+            r.boxColor.addInPlace(b.color);
+
+            if(b!=null&&it.cast(r, b)){
+
+                if(r.s > r.t){
+                    curBox = curBox.parent;
+                    continue;
+                }
+
+                cast(r,it,other);
+
+                if(r.hitBox != null && r.hitBox.depth < curBox.depth){
+                    r.hitBox = curBox;
+                }
+            }
+            curBox = temp;
+        }
+        //}
+    }
+
     public void reverseCast(Ray r, Intersector it, int sindex){
+
         Box b = aabbs.get(sindex);
         int other;
         int index = sindex;
@@ -457,11 +573,15 @@ public class BVH {
             if (b.hasChildren){
                 cast(r,it,sindex);
             } else {
-                ArrayList<Triangle> tris = boxTris.get(index);
+                ArrayList<SmallTriangle> tris = boxTrisSmall.get(index);
 
                 //if(tris.size()>10) System.out.println(tris.size());
-                for(Triangle t:tris){
+                /*for(SmallTriangle t:tris){
                     it.cast(t,r);
+                }*/
+
+                for(int i = 0; i < tris.size(); i++){
+                    it.cast(tris.get(i), r);
                 }
 
                 if(nray.Options.fastAndWrong){
@@ -476,7 +596,7 @@ public class BVH {
 
         float testS = r.s;
         
-        float lastS = b.lastS;
+        //float lastS = b.lastS;
         //if(!nray.Options.fastAndWrong){
             while(index > 1){
                 //mathematical trickery, mostly equivalent, 2 item lookup table the same, offset to the sibling node
@@ -502,32 +622,117 @@ public class BVH {
             }
         //}
     }
+
+    public void cast(Ray r, Intersector it, BinaryBox curBox){
+        //System.out.print(index+",");
+        //depth++;
+        //if(!hit) return;
+
+        r.boxColor.addInPlace(curBox.color);
+        //NEED THIS FOR REVERSE CAST
+        if(r.hitBox==null||(curBox.depth>r.hitBox.depth&&r.Itri==null)){
+            r.hitBox = curBox;
+        }
+
+        ArrayList<SmallTriangle> tris = curBox.triangles;//boxTrisSmall.get(index);
+        if(tris!=null&&tris.size()>0){
+
+            float oldT = r.t;
+            /*for(SmallTriangle t:tris){
+                it.cast(t,r);
+            }*/
+            for(int i = 0; i < tris.size(); i++){
+                it.cast(tris.get(i), r);
+            }
+            //NEED THIS FOR REVERSE CAST
+            if(r.t<oldT){
+                r.hitBox = curBox;//r.boxIndex = index;
+            }
+        } else {
+            BinaryBox leftBox = curBox.left;//aabbs.get(leftChild(index));
+            BinaryBox rightBox = curBox.right;// aabbs.get(rightChild(index));
+
+            if(leftBox == null && rightBox == null) return; //no actual children
+
+            boolean hitLeft = it.cast(r, leftBox);
+            float dLeft = r.s;
+            boolean hitRight = it.cast(r, rightBox);
+            float dRight = r.s;
+
+            if(!nray.Options.bvhcull){
+                if(hitLeft)   cast(r, it, leftBox);
+                if(hitRight)  cast(r, it, rightBox);
+                return;
+            }
+
+            //this almost never happens so it's not worth the test
+            /*if(r.t < dLeft && r.t < dRight){
+                return; //don't care, can't hit anything
+            }*/
+
+            if(hitLeft){
+                if(hitRight){
+                    if(dLeft<dRight){
+
+                        cast(r,it,leftBox);
+                        float oldT = r.t;
+                        if(r.t<dRight){
+                            return;
+                        }
+                        cast(r,it,rightBox);
+                    } else {
+
+                        cast(r,it,rightBox);
+                        if(r.t<dLeft){
+                            return;
+                        }
+                        float oldT = r.t;
+                        cast(r,it,leftBox);
+                    }
+                } else {
+                    cast(r,it,leftBox);
+                }
+            } else if(hitRight) {
+                cast(r,it,rightBox);
+            }
+        }
+
+    }
     
-    
-    
+    //averages ~9k cycles per call when multithreaded (with 4 threads)
+    //2.4k cycles per call with 2 threads
+    //650 cycles per call when singlethreaded... this is a problem
+    //Difference is worse on Nehelem (and Core) than Ivy Bridge...
     public void cast(Ray r, Intersector it, int index){
         //System.out.print(index+",");
         //depth++;
         //if(!hit) return;
-        r.boxColor.addInPlace(aabbs.get(index).color);
+        Box curBox = aabbs.get(index);
+        r.boxColor.addInPlace(curBox.color);
         if(index>r.boxIndex&&r.Itri==null){
             r.boxIndex = index;
         }
 
-        if(boxTris.get(index)!=null&&boxTris.get(index).size()>0){
+        ArrayList<SmallTriangle> tris = boxTrisSmall.get(index);
+        if(tris!=null&&tris.size()>0){
 
             float oldT = r.t;
-            ArrayList<Triangle> tris = boxTris.get(index);
-            for(Triangle t:tris){
+            /*for(SmallTriangle t:tris){
                 it.cast(t,r);
+            }*/
+            for(int i = 0; i < tris.size(); i++){
+                it.cast(tris.get(i), r);
             }
             if(r.t<oldT){
                 r.boxIndex = index;
             }
-        } else if(aabbs.get(index).hasChildren){
-            boolean hitLeft = it.cast(r, aabbs.get(leftChild(index)));
+        } else if(curBox.hasChildren){
+            Box leftBox = aabbs.get(leftChild(index));
+            Box rightBox =  aabbs.get(rightChild(index));
+
+            boolean hitLeft = it.cast(r, leftBox);
             float dLeft = r.s;
-            boolean hitRight = it.cast(r, aabbs.get(rightChild(index)));
+            boolean hitRight = it.cast(r, rightBox);
             float dRight = r.s;
 
             if(!nray.Options.bvhcull){
@@ -576,4 +781,18 @@ public class BVH {
     public int rightChild(int index){
         return index*2+1;
     }
+
+    public BVH clone(){
+        BVH copy = null;
+        try{
+            copy = (BVH)super.clone();
+        } catch (CloneNotSupportedException cnse){
+            cnse.printStackTrace();
+        }
+        copy.boxTrisSmall = (ArrayList<ArrayList<SmallTriangle>>)boxTrisSmall.clone();
+        copy.boxTris = (ArrayList<ArrayList<Triangle>>)boxTris.clone();
+
+        return copy;
+    }
+
 }

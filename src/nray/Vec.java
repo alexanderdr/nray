@@ -84,6 +84,12 @@ public final class Vec{
     public final float[] toArray(){
         return new float[]{x,y,z};
     }
+
+    public final void copyToArray(float[] other){
+        other[0] = x;
+        other[1] = y;
+        other[2] = z;
+    }
     
     public final Vec add(Vec other){
         Vec temp = new Vec();

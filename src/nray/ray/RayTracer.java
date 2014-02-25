@@ -32,7 +32,7 @@ import nray.*;
 
 import java.awt.*;
 import java.awt.image.*;
-public class RayTracer {
+public class RayTracer implements Cloneable {
     int width, height;
     RayScene s;
     
@@ -44,8 +44,8 @@ public class RayTracer {
     RayLight rlight;
 
 
-    static int castAgainstR = 0;
-    static int castAgainstB = 0;
+    //static int castAgainstR = 0;
+    //static int castAgainstB = 0;
     public RayTracer(RayScene s,Camera c,int width,int height){
         this.s = s;
         this.camera = c;
@@ -65,10 +65,10 @@ public class RayTracer {
     }
 
     public void render(){
-        this.render(bi, g, 0, 0, width, height);
+        this.render(bi, g, 0, 0, width, height, 1);
     }
 
-    public void render(BufferedImage bi, Graphics g, int startx, int starty, int endx, int endy){
+    public void render(BufferedImage bi, Graphics g, int startx, int starty, int endx, int endy, float ratio){
         Ray tempRay = new Ray(new Vec(),new Vec());
         Vec scratch = new Vec();
         Intersector it = new Intersector();
@@ -88,7 +88,7 @@ public class RayTracer {
         
         up = right.cross(normal);
         
-        right.scale(1.414f);
+        right.scale(1.414f * ratio);
         up.scale(1.414f);
         
         Vec ul = new Vec();
@@ -108,9 +108,10 @@ public class RayTracer {
         missTime = 0;
         int rCast = 0;
         long totalTime;
-        long start = System.nanoTime();
+        //long start = System.nanoTime();
         //s.clearS();
         //Ray.maxReasonableHits++;
+
         for(int y = starty;y<endy;y++){
 
             float yratio = ((float)y)/(height-1);
@@ -128,35 +129,40 @@ public class RayTracer {
 
                 RTObject lastObject = tempRay.object;
                 int boxIndex = tempRay.boxIndex;
+                BinaryBox guessBox = tempRay.hitBox;
 
                 lastTri = tempRay.Itri;
                 lastBox = tempRay.Ibox;
-                
+
                 tempRay.init(scratch,camera.getPos());
-                castAgainstR = castAgainstB = 0;
+                //interestingly new Ray() appears to be the same or slightly faster than .init()
+                //even though it increases GC activity 8-fold (from .1% to .8%)
+                //tempRay = new Ray(scratch, camera.getPos());
+                //castAgainstR = castAgainstB = 0;
 
                 //if(lastTri!=null){
                 long dTime = 0;
-                if(boxIndex>1&&Options.reverseCast){
+                if(guessBox != null && Options.reverseCast ){ //either boxIndex > 1 or guessBox != null
                     //rCast++;
 
+                    //pre-loading the last triangle currently provides no real benefits
                     //if(lastTri!=null) {
-                        //pre-loading the last triangle currently provides no real benefits
                         //it.cast(lastTri,tempRay);
                         //tempRay.castAny = true;
                     //}
                     long startTime = 0;
 
                     if(Options.colorTime)  startTime = System.nanoTime();
-                    s.reverseCast(tempRay, it, boxIndex, lastObject);
+                    s.reverseCast(tempRay, it, guessBox, lastObject);
                     if(Options.colorTime) dTime = System.nanoTime()-startTime;
 
                     long dTime2 = 0;
                     
                     if(tempRay.intersection!=null){
-                        if(tempRay.Itri==lastTri){
-                            tempRay.boxIndex = boxIndex;
-                        }
+                        //Not sure if we care about this...
+                        //if(tempRay.Itri==lastTri){
+                        //    tempRay.boxIndex = boxIndex;
+                        //}
 
                         /*if(tempRay.hitBackfacing){
                             tempRay.color.set(GREEN);
@@ -186,8 +192,8 @@ public class RayTracer {
                 //if((tempRay.Ibox == lastBox)&&(lastBox!=null)) totalLB++;
                 if((tempRay.Itri == lastTri)&&(lastTri!=null)) totalL++;
 
-                totalB += castAgainstB;
-                totalR += castAgainstR;
+                //totalB += castAgainstB;
+                //totalR += castAgainstR;
                 //debugging for black dots in thin surfaces
                 /*if((!prevprev.equals(Vec.ZERO))&&(prev.equals(Vec.ZERO))&&(!tempRay.color.equals(Vec.ZERO))){
                     int t = x;
@@ -222,11 +228,12 @@ public class RayTracer {
                 } else {
                     bi.setRGB(x - startx, y - starty, 0xFF000000);
                 }*/
+                //setting this or not setting this has no meaningful performance impact
                 bi.setRGB(x - startx, y - starty, 0xFF<<24|((int)(tempRay.color.x*255))<<16|((int)(tempRay.color.y*255))<<8|((int)(tempRay.color.z*255)));
             }
         }
-        long end = System.nanoTime();
-        totalTime = end-start;
+        //long end = System.nanoTime();
+        //totalTime = end-start;
         float tCount = width*height;
         //Some helpful but spammy output (mostly useful for single-threaded)
         //System.out.println(totalB/tCount + " " + totalR/tCount + " " + totalL/tCount + " "+totalLB/tCount+ " "+totalTime/1000000d+" "+rCast/tCount);
@@ -344,7 +351,7 @@ public class RayTracer {
 
             Vec dist = new Vec(1f,1f,1f);
 
-            dist.subInPlace(normal); //this can produce bad behavior with negative values with (.3, .3, .3);
+            dist.subInPlace(normal); //this can produce bad behavior, creating with negative values with input (.3, .3, .3);
             dist.normalizeInPlace();
             dist.scale(.2f);
 
@@ -536,6 +543,18 @@ public class RayTracer {
         
         hits += r.boxHits;
         raycount++;
+    }
+
+    public RayTracer clone(){
+        RayTracer copy = null;
+        try{
+            copy = (RayTracer)super.clone();
+        } catch (CloneNotSupportedException cnse){
+            cnse.printStackTrace();
+        }
+        copy.s = s.clone();
+
+        return copy;
     }
     
 }

@@ -54,16 +54,14 @@ public class RayLight {
 
         Intersector it = new Intersector();
 
-        int halfPhotonsAtEquator = 500;
+        int halfPhotonsAtEquator = 600;
 
-        for(float phi = 0; phi < Math.PI * 2; phi += Math.PI / 400){
-            float thetaStep = (float)(Math.PI / 400);//(float)(Math.PI / (halfPhotonsAtEquator * Math.max(.01f, Math.sin(phi)) ) );
+        //This should project each RTObject's outer AABB on to a sphere, and only cast photon in directions where the sphere is active
+        for(float phi = 0; phi < Math.PI * 2; phi += Math.PI / halfPhotonsAtEquator){
+            float thetaStep = (float)(Math.PI / halfPhotonsAtEquator);//(float)(Math.PI / (halfPhotonsAtEquator * Math.max(.01f, Math.sin(phi)) ) );
             for(float theta = 0; theta < Math.PI * 2; theta += thetaStep ){
 
                 Vec dir = new Vec(Math.cos(theta)*Math.sin(phi),Math.cos(phi),Math.sin(theta)*Math.sin(phi));
-                if(dir.mag() > 1.0001 || dir.mag() < .9999){
-                    System.out.println("I have work to do");
-                }
 
                 Ray r = new Ray(dir, pos);
                 rs.cast(r, it);

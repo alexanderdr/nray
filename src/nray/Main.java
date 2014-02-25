@@ -27,14 +27,13 @@ package nray;
  */
 import nray.ray.*;
 import java.awt.image.BufferedImage;
-import java.util.Vector;
 import java.io.*;
 import java.awt.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class Main {
 
-    public static Frame frame;
+    public static Frame frame; //used by the jdialog in HelpDialog
 
     /** Creates a new instance of Main */
     public Main() {
@@ -48,14 +47,19 @@ public class Main {
         rs = new RayScene();
         new SceneLoader("defaultscene.txt", rs);
 
+        //Should make this settable in a config.txt file
         int rayViewWidth = 400;
         int rayViewHeight = 400;
 
+        float viewRatio = rayViewWidth/(float)rayViewHeight;
+
         rt = new RayTracer(rs, camera, rayViewWidth, rayViewHeight);
+
         Frame f = new Frame();
-        f.setSize(416,438);
+        f.setSize(rayViewWidth + 16, rayViewHeight + 38);
         f.setLocation(0,0);
         f.setVisible(true);
+        f.setTitle("nray Tracer");
         Graphics fg = f.getGraphics();
 
         RayMouseAdapter mouseListener = new RayMouseAdapter(controlledCamera);
@@ -69,7 +73,7 @@ public class Main {
         });
 
         Frame console = new Frame();
-        console.setLocation(0,600);
+        console.setLocation(0,rayViewHeight + 40);
 
         console.setVisible(true);
         console.setSize(500,200);
@@ -82,16 +86,17 @@ public class Main {
             int count = 0;
             float averageFPS = 0;
             int framesOut = 0;
-            //because we always want as many software threads as the software supports, this seems like a reasonable number
+            //because we always want as many software threads as the hardware supports,
             //ideally should be set in the config file:
-            final int threadCount = 40;
+            final int threadCount = 8;
             RunnerThread[] runners = new RunnerThread[threadCount];
 
             BufferedImage intermediateImage = new BufferedImage(rayViewWidth, rayViewHeight, BufferedImage.TYPE_INT_ARGB_PRE);
             Graphics iig = intermediateImage.getGraphics();
 
             //these should ideally be settable in the config file as well
-            final int chunkHeightsPerImage = 20; //this needs to be a multiple of our ray image size
+            //these needs to be a multiple of our ray image size
+            final int chunkHeightsPerImage = 20;
             final int chunkWidthsPerImage = 8;
             final int chunkCount = chunkWidthsPerImage * chunkHeightsPerImage;
             RenderChunk[] chunks = new RenderChunk[chunkCount];
@@ -120,8 +125,9 @@ public class Main {
                 time = System.currentTimeMillis();
                 for(int y = 0; y < chunkHeightsPerImage; y++){
                     for(int x = 0;x < chunkWidthsPerImage; x++){
+
                         chunks[x + (y * chunkWidthsPerImage)] = new RenderChunk(imageSlices[x + (y * chunkWidthsPerImage)], x * (rayViewWidth / chunkWidthsPerImage), y * (rayViewHeight / chunkHeightsPerImage),
-                                (x + 1) * (rayViewWidth / chunkWidthsPerImage), (y + 1) * (rayViewHeight / chunkHeightsPerImage));
+                                (x + 1) * (rayViewWidth / chunkWidthsPerImage), (y + 1) * (rayViewHeight / chunkHeightsPerImage), viewRatio);
                     }
                 }
                 chunksLeft.set(chunkCount - 1);
@@ -145,9 +151,9 @@ public class Main {
                     }
                 } else {
                     //just do it with this thread
-                    rt.render(intermediateImage, iig, 0, 0, rayViewWidth, rayViewHeight);
+                    //it's worth noting that this is not as fast as the above code with a single thread running (it's 5-10% slower)
+                    rt.render(intermediateImage, iig, 0, 0, rayViewWidth, rayViewHeight, viewRatio);
                 }
-
 
                 camera.set(controlledCamera); //defers any camera position changes to between frames, prevents tearing
                 fg.drawImage(intermediateImage, 8, 30, null); //constants deal with the UI title bar and sides.
@@ -200,12 +206,13 @@ public class Main {
 }
 
 class RenderChunk{
+    float widthHeightRatio;
     int startx, starty, endx, endy;
     RayTracer rt;
     BufferedImage bi;
     Graphics g;
     boolean isComplete = false;
-    public RenderChunk(BufferedImage bi, int startx, int starty, int endx, int endy){
+    public RenderChunk(BufferedImage bi, int startx, int starty, int endx, int endy, float ratio){
         this.startx = startx;
         this.starty = starty;
         this.endx = endx;
@@ -213,6 +220,7 @@ class RenderChunk{
         this.rt = rt;
         this.bi = bi;
         this.g = bi.getGraphics();
+        this.widthHeightRatio = ratio;
     }
 
     public synchronized boolean isComplete(){
@@ -240,6 +248,7 @@ class RunnerThread extends Thread{
         this.remainingChunks = remainingChunks;
         this.chunkCount = chunkCount;
         this.frameLock = frameLock;
+
     }
 
 
@@ -248,13 +257,13 @@ class RunnerThread extends Thread{
         while(true){
 
             RenderChunk chunk = null;
-            synchronized (remainingChunks){
+            synchronized (remainingChunks){ //should be handled by the atomic
                 if(chunkCount.get() >= 0){
                     chunk = remainingChunks[chunkCount.getAndDecrement()];
                 }
             }
             if(chunk != null){
-                rt.render(chunk.bi, chunk.g, chunk.startx, chunk.starty, chunk.endx, chunk.endy);
+                rt.render(chunk.bi, chunk.g, chunk.startx, chunk.starty, chunk.endx, chunk.endy, chunk.widthHeightRatio);
                 chunk.setComplete(true);
             } else {
                 try{
@@ -262,6 +271,7 @@ class RunnerThread extends Thread{
                     synchronized(frameLock){
                         while(chunkCount.get() < 0){
                             frameLock.wait();
+                            //busywaiting here is actually slower
                         }
                     }
                 } catch (InterruptedException ie){
