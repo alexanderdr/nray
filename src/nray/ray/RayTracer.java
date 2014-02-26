@@ -43,9 +43,6 @@ public class RayTracer implements Cloneable {
 
     RayLight rlight;
 
-
-    //static int castAgainstR = 0;
-    //static int castAgainstB = 0;
     public RayTracer(RayScene s,Camera c,int width,int height){
         this.s = s;
         this.camera = c;
@@ -101,16 +98,10 @@ public class RayTracer implements Cloneable {
         raycount = 0;
         hits = 0;
         Vec prev = new Vec(), prevprev = new Vec();
-        int totalR, totalB, totalL, totalLB;
-        totalR = totalB = totalL = totalLB = 0;
+
         Triangle lastTri = null;
         Box lastBox = null;
         missTime = 0;
-        int rCast = 0;
-        long totalTime;
-        //long start = System.nanoTime();
-        //s.clearS();
-        //Ray.maxReasonableHits++;
 
         for(int y = starty;y<endy;y++){
 
@@ -138,9 +129,7 @@ public class RayTracer implements Cloneable {
                 //interestingly new Ray() appears to be the same or slightly faster than .init()
                 //even though it increases GC activity 8-fold (from .1% to .8%)
                 //tempRay = new Ray(scratch, camera.getPos());
-                //castAgainstR = castAgainstB = 0;
 
-                //if(lastTri!=null){
                 long dTime = 0;
                 if(guessBox != null && Options.reverseCast ){ //either boxIndex > 1 or guessBox != null
                     //rCast++;
@@ -189,11 +178,6 @@ public class RayTracer implements Cloneable {
                     tempRay.color.z = Math.min(1.0f, ((float)dTime)/250000f);
                 }
 
-                //if((tempRay.Ibox == lastBox)&&(lastBox!=null)) totalLB++;
-                if((tempRay.Itri == lastTri)&&(lastTri!=null)) totalL++;
-
-                //totalB += castAgainstB;
-                //totalR += castAgainstR;
                 //debugging for black dots in thin surfaces
                 /*if((!prevprev.equals(Vec.ZERO))&&(prev.equals(Vec.ZERO))&&(!tempRay.color.equals(Vec.ZERO))){
                     int t = x;
@@ -222,7 +206,7 @@ public class RayTracer implements Cloneable {
                 prevprev = new Vec(prev);
                 prev = new Vec(tempRay.color);*/
 
-
+                //on/off coloring for hit v. no hit.
                 /*if(tempRay.Itri != null){
                     bi.setRGB(x - startx, y - starty, 0xFF0000FF);
                 } else {
@@ -232,12 +216,7 @@ public class RayTracer implements Cloneable {
                 bi.setRGB(x - startx, y - starty, 0xFF<<24|((int)(tempRay.color.x*255))<<16|((int)(tempRay.color.y*255))<<8|((int)(tempRay.color.z*255)));
             }
         }
-        //long end = System.nanoTime();
-        //totalTime = end-start;
-        float tCount = width*height;
-        //Some helpful but spammy output (mostly useful for single-threaded)
-        //System.out.println(totalB/tCount + " " + totalR/tCount + " " + totalL/tCount + " "+totalLB/tCount+ " "+totalTime/1000000d+" "+rCast/tCount);
-        //System.out.println("Average box hits:"+hits/((float)raycount));
+
     }
     
     public Image getImage(){
@@ -253,7 +232,8 @@ public class RayTracer implements Cloneable {
         }
         return Vec.ZERO;
     }*/
-    
+
+    //would be used for transparency, currently unused
     public static Vec refract(Vec I,Vec N,float eta){
         Vec fracDir = new Vec();
         float theta = (float)Math.acos(I.dot(N)/(I.realMagnitude()*N.realMagnitude())); //(ray.normal)/(|ray|*|normal|)
@@ -271,8 +251,7 @@ public class RayTracer implements Cloneable {
         float f = N.dot(I.scaleNew(1f));
         Vec norm = N.scaleNew(f);
         Vec K = I.sub(norm);
-        
-        //System.out.println(1f/(float)Math.tan(theta2)+" "+Math.tan(theta2)+" "+Math.sin(theta2)+" "+Math.cos(theta2)+" "+Math.asin(theta2)+" "+Math.acos(theta2));
+
         K.scale((float)Math.tan(theta2));
         
         //K.scale(theta2);
@@ -391,46 +370,6 @@ public class RayTracer implements Cloneable {
             return;
         }
 
-
-
-        /*if(r.bounces>=1&&(r.object.equals(s.objects.get(0))||r.object.equals(s.objects.get(1)))){
-
-            Vec fracDir = refract(r.ray,normal,1.5f);//norm.sub(K).normalizeInPlace();
-
-            //System.out.println(fracDir.dot(r.ray));
-
-            if(!fracDir.equals(Vec.ZERO)){
-
-                Ray refractionRay = new Ray(fracDir,r.intersection.add(fracDir.scaleNew(.0001f)));//.add(normal.scaleNew(-.0001f)));
-
-                //if(r.hitBackfacing){
-                //    refractionRay.bounces = r.bounces-1;
-                //}
-
-                cast(refractionRay);
-
-                //System.out.println(theta+" "+normal+" "+fracDir+" | "+refractionRay.intersection+"   "+r.intersection);
-
-                if(refractionRay.color.equals(Vec.ZERO)){
-                } else {
-
-                    //if(!r.hitBackfacing){
-                        r.color.addInPlace(refractionRay.color);
-                    //}
-                    //System.out.println("bink");
-                }
-            } else {
-                r.color.addInPlace(GREEN);
-            }
-        } else {
-            //System.out.println("Strangeness");
-        }*/
-
-        //r.intersection.addInPlace(r.Itri.normal.scaleNew(.01f));
-        //r.intersection.addInPlace(normal.scaleNew(.01f));
-
-        //r.color.addInPlace(phits/150f,phits/150f,phits/150f);
-
         if(Options.photonLighting){
             Vec dist = new Vec(1f,1f,1f);
 
@@ -443,6 +382,8 @@ public class RayTracer implements Cloneable {
             r.color.addInPlace(.2f + Math.min(.8f, phits / 150f), .2f+ Math.min(.8f, phits / 150f), .2f+ Math.min(.8f, phits / 150f));
         } else {
             Vec dir = light.sub(r.intersection).normalize();
+
+            //this code allows for self-shadowing (by casting shadow rays)
             //Vec nDelta = normal.scaleNew(.0001f); //a small amount above the surface we hit...
             //Ray lightRay = new Ray(dir,r.intersection.add(nDelta));
             //Vec H = (dir.add(r.ray)).scale(.5f);
@@ -452,6 +393,7 @@ public class RayTracer implements Cloneable {
             //} else {
 
                 //Phong lighting ignorant of the rest of the scene.
+                //dscale: diffuse, sscale: specular
                 float dscale = normal.dot(dir);
                 //float sscale = dir.dot(r.ray); //specular, not used
 
@@ -487,6 +429,7 @@ public class RayTracer implements Cloneable {
             reflectionRay.bounces = r.bounces - 1;
             cast(reflectionRay, it);
             //r.color.addInPlace(reflectionRay.color.scaleNew(.5f));
+            //this alters reflection so if we hit no other objects there's no apparent reflection (instead of reflecting black)
             /*if(reflectionRay.color.equals(Vec.ZERO)){
 
             } else {
@@ -533,13 +476,13 @@ public class RayTracer implements Cloneable {
             r.color.set(tempColor);
         }
 
-        //For testing when we somehow intersect with an object which is black (which shouldn't generally happen)
-        if(r.color.x==0&&r.color.y==0&&r.color.z==0){
+        //For testing when we somehow intersect with an object which is pure black (which shouldn't generally happen)
+        /*if(r.color.x==0&&r.color.y==0&&r.color.z==0){
             //System.out.println("...");
             if(Options.colorBlack){
                 r.color.set(GREEN);
             }
-        }
+        }*/
         
         hits += r.boxHits;
         raycount++;

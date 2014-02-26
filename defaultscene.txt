@@ -4,4 +4,8 @@
 load bunny.obj
 ; offsets are possible, here is an example
 ;load bunny.obj 10 0 0
+;load bunny.obj -10 0 0
+;load bunny.obj 20 0 0
+;load bunny.obj -20 0 0
+; the dragon object has no normals, reflection won't work well as a result
 ;load dragon.obj

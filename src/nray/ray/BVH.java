@@ -501,11 +501,6 @@ public class BVH {
             } else {
                 ArrayList<SmallTriangle> tris = guessBox.triangles;
 
-                //if(tris.size()>10) System.out.println(tris.size());
-                /*for(SmallTriangle t:tris){
-                    it.cast(t,r);
-                }*/
-
                 for(int i = 0; i < tris.size(); i++){
                     it.cast(tris.get(i), r);
                 }
@@ -526,8 +521,6 @@ public class BVH {
         //if(!nray.Options.fastAndWrong){
         BinaryBox curBox = b;
         while(curBox.parent != null){
-            //mathematical trickery, mostly equivalent, 2 item lookup table the same, offset to the sibling node
-            //other = ((index&1)*-2)+1;//(index & 1) == 1 ? -1 : 1;
             BinaryBox other;
             BinaryBox temp = curBox.parent;
             if(temp.left == curBox){
@@ -553,7 +546,7 @@ public class BVH {
             }
             curBox = temp;
         }
-        //}
+
     }
 
     public void reverseCast(Ray r, Intersector it, int sindex){
@@ -597,60 +590,58 @@ public class BVH {
         float testS = r.s;
         
         //float lastS = b.lastS;
-        //if(!nray.Options.fastAndWrong){
-            while(index > 1){
-                //mathematical trickery, mostly equivalent, 2 item lookup table the same, offset to the sibling node
-                other = ((index&1)*-2)+1;//(index & 1) == 1 ? -1 : 1;
-                b = aabbs.get(index+other);
-                r.boxColor.addInPlace(b.color);
 
-                if(b!=null&&it.cast(r, b)){
+        while(index > 1){
+            //mathematical trickery, mostly equivalent, 2 item lookup table the same, offset to the sibling node
+            other = ((index&1)*-2)+1;//(index & 1) == 1 ? -1 : 1;
+            b = aabbs.get(index+other);
+            r.boxColor.addInPlace(b.color);
 
-                    if(r.s > r.t){
-                        index /= 2;
-                        continue;
-                    }
+            if(b!=null&&it.cast(r, b)){
 
-                    cast(r,it,index+other);
-
-                    if(r.boxIndex<0){
-                        r.boxIndex = index;
-                    }
+                if(r.s > r.t){
+                    index /= 2;
+                    continue;
                 }
-                index /= 2;
 
+                cast(r,it,index+other);
+
+                if(r.boxIndex<0){
+                    r.boxIndex = index;
+                }
             }
-        //}
+            index /= 2;
+
+        }
+
     }
 
     public void cast(Ray r, Intersector it, BinaryBox curBox){
-        //System.out.print(index+",");
+
         //depth++;
         //if(!hit) return;
 
         r.boxColor.addInPlace(curBox.color);
-        //NEED THIS FOR REVERSE CAST
+
         if(r.hitBox==null||(curBox.depth>r.hitBox.depth&&r.Itri==null)){
             r.hitBox = curBox;
         }
 
-        ArrayList<SmallTriangle> tris = curBox.triangles;//boxTrisSmall.get(index);
+        ArrayList<SmallTriangle> tris = curBox.triangles;
         if(tris!=null&&tris.size()>0){
 
             float oldT = r.t;
-            /*for(SmallTriangle t:tris){
-                it.cast(t,r);
-            }*/
+
             for(int i = 0; i < tris.size(); i++){
                 it.cast(tris.get(i), r);
             }
-            //NEED THIS FOR REVERSE CAST
+
             if(r.t<oldT){
                 r.hitBox = curBox;//r.boxIndex = index;
             }
         } else {
-            BinaryBox leftBox = curBox.left;//aabbs.get(leftChild(index));
-            BinaryBox rightBox = curBox.right;// aabbs.get(rightChild(index));
+            BinaryBox leftBox = curBox.left;
+            BinaryBox rightBox = curBox.right;
 
             if(leftBox == null && rightBox == null) return; //no actual children
 
@@ -698,13 +689,8 @@ public class BVH {
         }
 
     }
-    
-    //averages ~9k cycles per call when multithreaded (with 4 threads)
-    //2.4k cycles per call with 2 threads
-    //650 cycles per call when singlethreaded... this is a problem
-    //Difference is worse on Nehelem (and Core) than Ivy Bridge...
+
     public void cast(Ray r, Intersector it, int index){
-        //System.out.print(index+",");
         //depth++;
         //if(!hit) return;
         Box curBox = aabbs.get(index);
@@ -717,9 +703,7 @@ public class BVH {
         if(tris!=null&&tris.size()>0){
 
             float oldT = r.t;
-            /*for(SmallTriangle t:tris){
-                it.cast(t,r);
-            }*/
+
             for(int i = 0; i < tris.size(); i++){
                 it.cast(tris.get(i), r);
             }

@@ -36,13 +36,21 @@ public class HelpDialogue {
     /** Creates a new instance of HelpDialogue */
     public HelpDialogue() {
     }
+
+    public static Frame frame = null;
+
+    public static void setFrame(Frame f){
+        frame = f;
+    }
     
     public static void display(){
             //Thank you Sun for the following code from the dialogue demo found at:
             //http://java.sun.com/docs/books/tutorial/uiswing/components/examples/DialogDemo.java
-            
+
+            if(frame == null) return;
+
             //Create the dialog.
-            final JDialog dialog = new JDialog(Main.frame,
+            final JDialog dialog = new JDialog(frame,
                                                "Command help");
 
             //Add contents to it. It must have a close button,
@@ -94,7 +102,7 @@ public class HelpDialogue {
 
             //Show it.
             dialog.setSize(new Dimension(400, 350));
-            dialog.setLocationRelativeTo(Main.frame);
+            dialog.setLocationRelativeTo(frame);
             dialog.setVisible(true);
     }
     

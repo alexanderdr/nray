@@ -33,8 +33,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class Main {
 
-    public static Frame frame; //used by the jdialog in HelpDialog
-
     /** Creates a new instance of Main */
     public Main() {
 
@@ -61,6 +59,8 @@ public class Main {
         f.setVisible(true);
         f.setTitle("nray Tracer");
         Graphics fg = f.getGraphics();
+
+        HelpDialogue.setFrame(f);
 
         RayMouseAdapter mouseListener = new RayMouseAdapter(controlledCamera);
         f.addMouseMotionListener(mouseListener);
@@ -105,7 +105,7 @@ public class Main {
             Graphics[] graphicsArray = new Graphics[chunkCount];
 
             Object frameLock = new Object();
-            AtomicInteger chunksLeft = new AtomicInteger(0);
+            AtomicInteger chunksLeft = new AtomicInteger(-1);
 
             System.out.println("The render loop is now going");
 
@@ -217,7 +217,6 @@ class RenderChunk{
         this.starty = starty;
         this.endx = endx;
         this.endy = endy;
-        this.rt = rt;
         this.bi = bi;
         this.g = bi.getGraphics();
         this.widthHeightRatio = ratio;
@@ -257,7 +256,7 @@ class RunnerThread extends Thread{
         while(true){
 
             RenderChunk chunk = null;
-            synchronized (remainingChunks){ //should be handled by the atomic
+            synchronized (remainingChunks){
                 if(chunkCount.get() >= 0){
                     chunk = remainingChunks[chunkCount.getAndDecrement()];
                 }

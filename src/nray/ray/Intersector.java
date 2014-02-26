@@ -44,40 +44,38 @@ public class Intersector {
     //ray box intersection
     //private static Vec S = new Vec(), T = new Vec();
     public boolean cast(Ray r,Box b){
-        
-        //RayTracer.castAgainstB++; //not thread safe, but it's just for diagnostics so we'll survive missing some casts to not have a volatile here
+
         float maxS = Float.NEGATIVE_INFINITY;
         float minT = r.t;//Float.MAX_VALUE;
         
         r.boxHits++;
-        
-        Vec hit = new Vec();
 
-        //burn some incense to the jit and simd gods. don't care about division by zero, just produces infinities
-        float sx = (b.ix - r.origin.x) * r.rayInv.x;
+        //This doesn't seem to convince the jit to produce clean simd code, just do it the old way
+        /*float sx = (b.ix - r.origin.x) * r.rayInv.x;
         float sy = (b.iy - r.origin.y) * r.rayInv.y;
         float sz = (b.iz - r.origin.z) * r.rayInv.z;
 
         float tx = (b.ax - r.origin.x) * r.rayInv.x;
         float ty = (b.ay - r.origin.y) * r.rayInv.y;
-        float tz = (b.az - r.origin.z) * r.rayInv.z;
+        float tz = (b.az - r.origin.z) * r.rayInv.z;*/
 
-        if(r.ray.x==0){
+        if(r.ray.x==0f){
             if(r.origin.x < b.ix || r.origin.x > b.ax){
                 return false;
             }
             //hit.x = r.origin.x;
         } else {
+            float s = (b.ix - r.origin.x) * r.rayInv.x;
+            float t = (b.ax - r.origin.x) * r.rayInv.x;
 
-
-            if(sx > tx){
-                float temp = sx;
-                sx = tx;
-                tx = temp;
+            if(s > t){
+                float temp = s;
+                s = t;
+                t = temp;
             }
 
-            if( sx > maxS ) maxS = sx; //maxS = Math.max(maxS,s); is slower.
-            if( tx < minT ) minT = tx;
+            if( s > maxS ) maxS = s; //maxS = Math.max(maxS,s); is slower.
+            if( t < minT ) minT = t;
 
             //hit.x = s;
             if(minT < 0f || maxS > minT){
@@ -85,21 +83,23 @@ public class Intersector {
             }
         }
 
-        if(r.ray.y==0){
+        if(r.ray.y==0f){
             if(r.origin.y < b.iy || r.origin.y > b.ay){
                 return false;
             }
             //hit.y = r.origin.y;
         } else {
+            float s = (b.iy - r.origin.y) * r.rayInv.y;
+            float t = (b.ay - r.origin.y) * r.rayInv.y;
 
-            if(sy > ty){
-                float temp = sy;
-                sy = ty;
-                ty = temp;
+            if(s > t){
+                float temp = s;
+                s = t;
+                t = temp;
             }
 
-            if( sy > maxS ) maxS = sy;
-            if( ty < minT ) minT = ty;
+            if( s > maxS ) maxS = s;
+            if( t < minT ) minT = t;
 
             //hit.y = s;
             if(minT < 0f || maxS > minT){
@@ -107,21 +107,23 @@ public class Intersector {
             }
         }
 
-        if(r.ray.z==0){
+        if(r.ray.z==0f){
             if(r.origin.z < b.iz || r.origin.z > b.az){
                 return false;
             }
             //hit.z = r.origin.z;
         } else {
+            float s = (b.iz - r.origin.z) * r.rayInv.z;
+            float t = (b.az - r.origin.z) * r.rayInv.z;
 
-            if(sz > tz){
-                float temp = sz;
-                sz = tz;
-                tz = temp;
+            if(s > t){
+                float temp = s;
+                s = t;
+                t = temp;
             }
 
-            if( sz > maxS ) maxS = sz;
-            if( tz < minT ) minT = tz;
+            if( s > maxS ) maxS = s;
+            if( t < minT ) minT = t;
 
             //hit.z = s;
             if(minT < 0f || maxS > minT){
@@ -139,7 +141,6 @@ public class Intersector {
 
     public boolean cast(Ray r,BinaryBox b){
 
-        //RayTracer.castAgainstB++; //not thread safe, but it's just for diagnostics so we'll survive missing some casts to not have a volatile here
         float maxS = Float.NEGATIVE_INFINITY;//-Float.MAX_VALUE;
         float minT = r.t;//Float.MAX_VALUE;
         //Vec mMin = b.min;
@@ -234,7 +235,6 @@ public class Intersector {
     //sets values on the Ray if an intersection is found
     public boolean cast(Triangle tri, Ray r){
         //increments for heatmaps
-        //RayTracer.castAgainstR++;
         r.triHits++;
         tri.hit++;
 
@@ -289,11 +289,9 @@ public class Intersector {
         return false;
     }
 
+    //this thankfully causes hotspot in openjdk 7u40 to produce some simd instructions on x86-64 at least.
     public boolean cast(SmallTriangle tri, Ray r){
-        //increments for heatmaps
-        //RayTracer.castAgainstR++;
         r.triHits++;
-        //tri.hit++;
 
         //cross
         //r.ray.cross(e2,p);
@@ -345,7 +343,6 @@ public class Intersector {
 
         if (t>=0f){
 
-            //if(Math.abs(t)>=Math.abs(r.t)) return true;
             if(t>=r.t) return true; //we've already hit a closer triangle than this one
 
             Vec pos;
